@@ -17,18 +17,19 @@
   --chip: #f0ede6;
   --viewer: #ebe7de;
   --danger: #c2412d;
+  --series-1: #2a78d6; --series-2: #eb6834; --neutral: #8a8d91; --grid: #ece9e2;
   --shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 16px rgba(0,0,0,.05);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #15171b; --panel: #1d2026; --ink: #e8e6e1; --muted: #9aa1ab; --line: #2e323a;
-    --accent: #6b9cf0; --accent-ink: #0f1115; --chip: #262a31; --viewer: #101215; --danger: #ef7a66;
+    --accent: #6b9cf0; --accent-ink: #0f1115; --chip: #262a31; --viewer: #101215; --danger: #ef7a66; --series-1: #3987e5; --series-2: #d95926; --neutral: #6b6f75; --grid: #262a31;
     --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
   }
 }
 :root[data-theme="dark"] {
   --bg: #15171b; --panel: #1d2026; --ink: #e8e6e1; --muted: #9aa1ab; --line: #2e323a;
-  --accent: #6b9cf0; --accent-ink: #0f1115; --chip: #262a31; --viewer: #101215; --danger: #ef7a66;
+  --accent: #6b9cf0; --accent-ink: #0f1115; --chip: #262a31; --viewer: #101215; --danger: #ef7a66; --series-1: #3987e5; --series-2: #d95926; --neutral: #6b6f75; --grid: #262a31;
   --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
 }
 * { box-sizing: border-box; }
@@ -145,6 +146,37 @@ label.check { display: flex; gap: 6px; align-items: center; font-size: 14px; mar
 .layer { text-align: center; font-size: 11px; color: var(--muted); }
 .layer .g { display: grid; grid-template-columns: repeat(3, 20px); gap: 2px; margin-top: 3px; }
 .layer .g b { height: 20px; border-radius: 3px; display: grid; place-items: center; color: #fff; font-size: 11px; }
+.stats { max-width: 1400px; margin: 0 auto; padding: 0 24px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+.stats section.card h2 { text-transform: none; letter-spacing: 0; font-size: 16px; color: var(--ink); margin: 0 0 2px; }
+.stats .sub { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+.hist { display: flex; align-items: flex-end; gap: 6px; height: 300px; border-bottom: 1px solid var(--line);
+  background: repeating-linear-gradient(to top, var(--grid) 0 1px, transparent 1px 55px); }
+.hist button { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%;
+  background: none; border: none; padding: 0; min-width: 0; }
+.hist .bar { width: 100%; background: var(--series-1); border-radius: 4px 4px 0 0; min-height: 2px; }
+.hist button.zero .bar { background: var(--neutral); }
+.hist button:hover .bar { filter: brightness(1.12); }
+.hist .v { font-size: 11px; color: var(--muted); margin-bottom: 3px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hist-x { display: flex; gap: 6px; margin-top: 5px; }
+.hist-x span { flex: 1; text-align: center; font-size: 11px; color: var(--muted); min-width: 0; }
+.axis-title { text-align: center; font-size: 12px; color: var(--muted); margin-top: 4px; }
+.effects { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
+.effects h3 { font-size: 13px; margin: 0 0 4px; font-weight: 600; }
+.eff { display: grid; grid-template-columns: 28px 26px 1fr 40px; align-items: center; gap: 4px; width: 100%;
+  background: none; border: none; padding: 1px 0; text-align: left; border-radius: 6px; }
+.eff:hover { background: var(--chip); }
+.eff svg { width: 26px; height: 22px; }
+.eff .n { font-size: 12px; color: var(--muted); }
+.eff .f { font-size: 12px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; padding-right: 4px; }
+.track { position: relative; height: 20px; }
+.track .one { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--muted); }
+.track .stem { position: absolute; top: 9px; height: 2px; background: var(--line); }
+.track .dot { position: absolute; top: 5px; width: 10px; height: 10px; border-radius: 50%; margin-left: -5px;
+  box-shadow: 0 0 0 2px var(--panel); }
+.ticks { position: relative; height: 16px; margin-left: 58px; margin-right: 40px; font-size: 11px; color: var(--muted); }
+.ticks span { position: absolute; transform: translateX(-50%); }
+.tip { position: fixed; pointer-events: none; z-index: 10; background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px 9px; font-size: 12px; box-shadow: var(--shadow); max-width: 260px; }
 footer { color: var(--muted); font-size: 13px; padding: 0 24px 28px; max-width: 1400px; margin: 0 auto; }
 footer a { color: inherit; }
 
@@ -155,6 +187,10 @@ footer a { color: inherit; }
   .stage { height: 62vh; }
   .layers { margin-left: 0; }
   footer { padding: 0 16px 24px; }
+  .stats { grid-template-columns: 1fr; padding: 0 16px 20px; }
+  .effects { grid-template-columns: 1fr; gap: 14px; }
+  .hist .v { font-size: 9px; }
+  .hist-x span { font-size: 9px; }
 }
 </style>
 <script type="importmap">
@@ -240,6 +276,22 @@ footer a { color: inherit; }
     <p class="hint" style="margin:0">Drag to turn the cube, scroll or pinch to zoom. Click a piece in the legend to hide or show it.</p>
   </div>
 </main>
+<div class="stats">
+  <section class="card">
+    <h2>How many solutions do puzzles have?</h2>
+    <p class="sub" id="histSub">All 80,500 sets of six different pieces. Click a bar to find puzzles with that many solutions.</p>
+    <div class="hist" id="hist" role="img" aria-label="Histogram of solutions per piece set"></div>
+    <div class="hist-x" id="histX"></div>
+    <div class="axis-title">Number of solutions</div>
+  </section>
+  <section class="card">
+    <h2>Which pieces give more solutions?</h2>
+    <p class="sub">Each piece’s average effect on the number of solutions, compared with a typical piece of its size: ×2 roughly doubles it. Click a piece to add it.</p>
+    <div class="effects" id="effects"></div>
+    <p class="hint" id="effNote"></p>
+  </section>
+</div>
+<div class="tip" id="tip" hidden></div>
 <footer>
   Every set of three four-cube and three five-cube pieces was checked in advance:
   <span id="totals"></span>

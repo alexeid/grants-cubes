@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { shapes, NTETRA, solve, shapeByLetter, identify, cellXYZ, canonicalForm } from './solver.js';
+import { shapes, NTETRA, solve, shapeByLetter, shapeByName, identify, cellXYZ, canonicalForm } from './solver.js';
 
 const COLORS = ['#e8604c', '#f0b23a', '#2fae94', '#4b7fdc', '#9a6bd6', '#7dbb47'];
 const ORIGINAL = 'bdgLOT';
@@ -418,6 +418,102 @@ function randomPuzzle() {
   setPieces([...k].map(ch => shapeByLetter.get(ch).index));
 }
 
+/* ---------- charts: solution histogram and piece effects ---------- */
+
+const tip = $('tip');
+function hover(el, html) {
+  el.addEventListener('pointermove', e => {
+    tip.innerHTML = html;
+    tip.hidden = false;
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.min(e.clientX + 12, innerWidth - w - 8) + 'px';
+    tip.style.top = (e.clientY - h - 12 < 4 ? e.clientY + 16 : e.clientY - h - 12) + 'px';
+  });
+  el.addEventListener('pointerleave', () => { tip.hidden = true; });
+}
+
+function findPuzzles(n) {
+  $('distinct').checked = true;
+  $('nsol').value = n;
+  browse();
+  $('nsol').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function drawHistogram() {
+  // log2 bins, since counts run from 1 to several hundred; sets of six different pieces only
+  const bins = [[0, 0], [1, 1], [2, 2], [3, 4], [5, 8], [9, 16], [17, 32], [33, 64], [65, 128], [129, 256], [257, 1e9]];
+  const total = 80500;
+  let solvable = 0;
+  const vals = bins.map(([lo, hi]) => {
+    let k = 0;
+    for (const [n, keys] of byCount) if (n >= lo && n <= hi) k += keys.filter(isDistinct).length;
+    solvable += k;
+    return k;
+  });
+  vals[0] = total - solvable;
+  const max = Math.max(...vals);
+  const hist = $('hist'), xs = $('histX');
+  bins.forEach(([lo, hi], i) => {
+    const label = i === 0 ? '0' : hi >= 1e9 ? `${lo}+` : lo === hi ? `${lo}` : `${lo}–${hi}`;
+    const b = document.createElement('button');
+    if (i === 0) b.className = 'zero';
+    const v = vals[i] >= 1000 ? (vals[i] / 1000).toFixed(1) + 'k' : String(vals[i]);
+    b.innerHTML = `<span class="v">${v}</span><span class="bar" style="height:${(vals[i] / max * 88).toFixed(1)}%"></span>`;
+    const pct = (vals[i] / total * 100).toFixed(vals[i] / total < 0.01 ? 2 : 1);
+    hover(b, `<b>${label} solution${label === '1' ? '' : 's'}</b><br>${vals[i].toLocaleString()} sets (${pct}%)` +
+      (i ? '<br>Click to find these puzzles' : '<br>These pieces can’t fill the cube'));
+    if (i) b.onclick = () => findPuzzles(lo);
+    else b.style.cursor = 'default';
+    b.setAttribute('aria-label', `${label} solutions: ${vals[i]} sets`);
+    hist.appendChild(b);
+    xs.insertAdjacentHTML('beforeend', `<span>${label}</span>`);
+  });
+  const sorted = [];
+  for (const [n, keys] of byCount) { const k = keys.filter(isDistinct).length; for (let j = 0; j < k; j++) sorted.push(n); }
+  sorted.sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  $('histSub').textContent = `All 80,500 sets of six different pieces. ${Math.round(vals[0] / total * 100)}% can’t be solved; ` +
+    `solvable sets have a median of ${median} solutions. Click a bar to find puzzles with that many.`;
+}
+
+async function drawEffects() {
+  const text = await (await fetch('outputs/piece_effects.tsv')).text();
+  const lines = text.trim().split('\n');
+  const r2 = +(lines.find(l => l.startsWith('# r2')) || '').split('\t')[1];
+  const rows = lines.filter(l => !l.startsWith('#')).slice(1).map(l => {
+    const [name, factor, placements, , , solvable, mean] = l.split('\t');
+    return { s: shapeByName.get(name), factor: +factor, placements: +placements, solvable: +solvable, mean: +mean };
+  });
+  const lo = Math.log2(0.33), hi = Math.log2(3);
+  const x = f => ((Math.log2(f) - lo) / (hi - lo) * 100).toFixed(2) + '%';
+  const el = $('effects');
+  for (const size of [4, 5]) {
+    const col = document.createElement('div');
+    col.innerHTML = `<h3>${size === 4 ? 'Four' : 'Five'}-cube pieces</h3>`;
+    for (const r of rows.filter(r => r.s.size === size)) {
+      const up = r.factor >= 1;
+      const color = up ? 'var(--series-1)' : 'var(--series-2)';
+      const a = Math.min(x(1).slice(0, -1), x(r.factor).slice(0, -1)), b = Math.max(x(1).slice(0, -1), x(r.factor).slice(0, -1));
+      const btn = document.createElement('button');
+      btn.className = 'eff';
+      btn.innerHTML = isoSVG(r.s.cells, NEUTRAL) + `<span class="n">${r.s.name}</span>` +
+        `<span class="track"><span class="one" style="left:${x(1)}"></span>` +
+        `<span class="stem" style="left:${a}%;width:${b - a}%"></span>` +
+        `<span class="dot" style="left:${x(r.factor)};background:${color}"></span></span>` +
+        `<span class="f">×${r.factor.toFixed(2)}</span>`;
+      hover(btn, `<b>${r.s.name}</b> ×${r.factor.toFixed(2)}<br>${r.placements} ways to sit in the cube<br>` +
+        `${Math.round(r.solvable * 100)}% of sets with it can be solved, averaging ${r.mean.toFixed(1)} solutions<br>` +
+        (r.s.mirror === r.s.index ? 'Same as its mirror image' : `Mirror image of ${shapes[r.s.mirror].name}`));
+      btn.onclick = () => addPiece(r.s.index);
+      col.appendChild(btn);
+    }
+    col.insertAdjacentHTML('beforeend', `<div class="ticks">${[0.5, 1, 2].map(f => `<span style="left:${x(f)}">×${f}</span>`).join('')}</div>`);
+    el.appendChild(col);
+  }
+  $('effNote').textContent = 'Effects come from fitting log(1 + solutions) as a sum of one term per piece over all 80,500 sets. ' +
+    `That explains ${Math.round(r2 * 100)}% of the variation; the rest depends on which pieces fit together.`;
+}
+
 /* ---------- entering a solved cube ---------- */
 
 function parseCube(text) {
@@ -479,4 +575,5 @@ buildPalette();
 if (!readHash()) $('original').click();
 resize();
 frame();
-loadSets();
+loadSets().then(drawHistogram);
+drawEffects();

@@ -141,6 +141,7 @@ def main():
     print(f"\nPiece effects: additive model on log2(1 + solutions), R² = {r2:.2f}")
     print("piece  factor  placements  flat  chiral  solvable  mean solutions")
     with open(os.path.join(OUT, "piece_effects.tsv"), "w") as f:
+        f.write(f"# r2\t{r2:.3f}\n")
         f.write("piece\tfactor\tplacements\tflat\tchiral\tsolvable\tmean_solutions\n")
         for r in rows:
             print(f"  {r['name']}   ×{r['factor']:.2f}   {r['placements']:5d}      {'yes' if r['flat'] else '  -'}"
