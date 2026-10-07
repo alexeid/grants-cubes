@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cube Puzzle Finder</title>
+<meta name="description" content="Fill a 3×3×3 cube with three four-cube and three five-cube pieces: pick pieces, find every solution, and explore them in 3D.">
+<style>
+:root {
+  --bg: #f6f4ef;
+  --panel: #ffffff;
+  --ink: #1f2328;
+  --muted: #68707a;
+  --line: #e2ded5;
+  --accent: #2f6fdb;
+  --accent-ink: #ffffff;
+  --chip: #f0ede6;
+  --viewer: #ebe7de;
+  --danger: #c2412d;
+  --shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 16px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171b; --panel: #1d2026; --ink: #e8e6e1; --muted: #9aa1ab; --line: #2e323a;
+    --accent: #6b9cf0; --accent-ink: #0f1115; --chip: #262a31; --viewer: #101215; --danger: #ef7a66;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171b; --panel: #1d2026; --ink: #e8e6e1; --muted: #9aa1ab; --line: #2e323a;
+  --accent: #6b9cf0; --accent-ink: #0f1115; --chip: #262a31; --viewer: #101215; --danger: #ef7a66;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+header { padding: 20px 24px 8px; max-width: 1400px; margin: 0 auto; }
+header h1 { margin: 0; font-size: 22px; letter-spacing: -.01em; }
+header p { margin: 4px 0 0; color: var(--muted); }
+main {
+  display: grid; grid-template-columns: minmax(320px, 400px) 1fr; gap: 20px;
+  padding: 12px 24px 32px; max-width: 1400px; margin: 0 auto; align-items: start;
+}
+.controls { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+section.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); }
+section.card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+.hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.btn { background: var(--chip); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn:disabled { opacity: .45; cursor: default; }
+
+.tray { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.slot {
+  aspect-ratio: 1; border: 1.5px dashed var(--line); border-radius: 10px; display: grid; place-items: center;
+  position: relative; background: transparent; padding: 2px;
+}
+.slot.filled { border-style: solid; background: var(--chip); }
+.slot svg { width: 100%; height: 100%; padding: 4px 6px 14px; }
+.slot .nm { position: absolute; bottom: 1px; left: 0; right: 0; text-align: center; font-size: 11px; color: var(--muted); }
+.slot .x { position: absolute; top: 0; right: 4px; font-size: 13px; color: var(--muted); }
+.slot .size { color: var(--muted); font-size: 12px; }
+.result { margin-top: 10px; font-size: 15px; min-height: 22px; }
+.result strong { font-size: 18px; }
+.result .bad { color: var(--danger); }
+
+.palette h3 { font-size: 13px; margin: 10px 0 6px; font-weight: 600; }
+.palette h3:first-child { margin-top: 0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
+.pc {
+  background: var(--chip); border: 1px solid transparent; border-radius: 8px; padding: 3px 2px 1px;
+  display: flex; flex-direction: column; align-items: center;
+}
+.pc:hover:not(:disabled) { border-color: var(--accent); }
+.pc:disabled { opacity: .35; cursor: default; }
+.pc svg { width: 44px; height: 40px; }
+.pc span { font-size: 11px; color: var(--muted); }
+
+.browse-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.browse-row input[type=number] {
+  width: 76px; font: inherit; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--ink);
+}
+.quick { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.quick .btn { padding: 3px 10px; font-size: 13px; }
+label.check { display: flex; gap: 6px; align-items: center; font-size: 14px; margin-top: 8px; }
+.matches { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+.match {
+  display: flex; align-items: center; gap: 2px; background: var(--chip); border: 1px solid transparent;
+  border-radius: 8px; padding: 2px 8px; text-align: left;
+}
+.match:hover { border-color: var(--accent); }
+.match svg { width: 34px; height: 30px; flex: none; }
+.match .lbl { margin-left: auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.enter input {
+  width: 100%; font: 14px ui-monospace, SFMono-Regular, Menlo, monospace; padding: 7px 9px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+}
+.enter .browse-row { margin-top: 8px; }
+.err { color: var(--danger); font-size: 13px; margin-top: 6px; min-height: 18px; }
+
+.viewer { position: sticky; top: 12px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.stage {
+  position: relative; background: var(--viewer); border-radius: 14px; border: 1px solid var(--line);
+  height: min(72vh, 680px); overflow: hidden; touch-action: none;
+}
+.stage canvas { display: block; width: 100%; height: 100%; }
+.stage .top, .stage .bottom {
+  position: absolute; left: 12px; right: 12px; display: flex; align-items: center; gap: 10px; pointer-events: none;
+}
+.stage .top { top: 12px; justify-content: space-between; }
+.stage .bottom { bottom: 12px; }
+.stage .top > *, .stage .bottom > * { pointer-events: auto; }
+.pill {
+  background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--line); border-radius: 999px;
+  padding: 5px 8px; display: flex; align-items: center; gap: 6px; backdrop-filter: blur(6px);
+}
+.pill button { background: none; border: none; padding: 2px 8px; border-radius: 999px; font-size: 16px; line-height: 1; }
+.pill button:hover:not(:disabled) { background: var(--chip); }
+.pill button:disabled { opacity: .3; cursor: default; }
+.pill .count { font-variant-numeric: tabular-nums; font-size: 14px; padding: 0 2px; white-space: nowrap; }
+.pill.explode { flex: 1; padding: 6px 14px; gap: 12px; font-size: 14px; }
+.pill.explode input { flex: 1; accent-color: var(--accent); min-width: 60px; }
+.overlay-msg {
+  position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; color: var(--muted);
+  font-size: 15px; text-align: center; padding: 24px;
+}
+.overlay-msg[hidden] { display: none; }
+.overlay-msg span { background: color-mix(in srgb, var(--panel) 85%, transparent); padding: 8px 14px; border-radius: 10px; }
+
+.below { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+.legend { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  display: flex; align-items: center; gap: 6px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 999px; padding: 3px 10px 3px 4px; font-size: 13px;
+}
+.chip i { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 11px; color: #fff; font-weight: 700; }
+.chip.off { opacity: .4; }
+.layers { display: flex; gap: 14px; margin-left: auto; }
+.layer { text-align: center; font-size: 11px; color: var(--muted); }
+.layer .g { display: grid; grid-template-columns: repeat(3, 20px); gap: 2px; margin-top: 3px; }
+.layer .g b { height: 20px; border-radius: 3px; display: grid; place-items: center; color: #fff; font-size: 11px; }
+footer { color: var(--muted); font-size: 13px; padding: 0 24px 28px; max-width: 1400px; margin: 0 auto; }
+footer a { color: inherit; }
+
+@media (max-width: 860px) {
+  header { padding: 16px 16px 4px; }
+  main { grid-template-columns: 1fr; padding: 10px 16px 24px; }
+  .viewer { position: static; order: -1; }
+  .stage { height: 62vh; }
+  .layers { margin-left: 0; }
+  footer { padding: 0 16px 24px; }
+}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<header>
+  <h1>Cube Puzzle Finder</h1>
+  <p>Fill a 3×3×3 cube with three four-cube pieces and three five-cube pieces. Pick a set, see every solution, and pull the cube apart.</p>
+</header>
+<main>
+  <div class="controls">
+    <section class="card">
+      <h2>Your pieces</h2>
+      <div class="tray" id="tray"></div>
+      <div class="result" id="result"></div>
+      <div class="quick" style="margin-top:10px">
+        <button class="btn" id="original">Original puzzle</button>
+        <button class="btn" id="random">Random puzzle</button>
+        <button class="btn" id="clear">Clear</button>
+      </div>
+    </section>
+
+    <section class="card palette">
+      <h2>Add a piece</h2>
+      <h3>Four-cube pieces</h3>
+      <div class="grid" id="pal4"></div>
+      <h3>Five-cube pieces</h3>
+      <div class="grid" id="pal5"></div>
+      <p class="hint">Pieces can be turned but not mirrored, so a piece and its mirror image are different pieces. Hover a piece to see its mirror.</p>
+    </section>
+
+    <section class="card">
+      <h2>Find puzzles by difficulty</h2>
+      <div class="browse-row">
+        <span>Exactly</span>
+        <input type="number" id="nsol" min="1" value="1">
+        <span>solutions</span>
+      </div>
+      <div class="quick" id="quick"></div>
+      <label class="check"><input type="checkbox" id="distinct" checked> All six pieces different</label>
+      <p class="hint" id="browseInfo"></p>
+      <div class="matches" id="matches"></div>
+      <div class="quick"><button class="btn" id="more">Show others</button></div>
+    </section>
+
+    <section class="card enter">
+      <h2>Enter a solved cube</h2>
+      <input id="cubeText" spellcheck="false" autocomplete="off" placeholder="225/245/441 245/641/631 655/661/333">
+      <p class="hint">Three layers from top to bottom. In each layer, rows from back to front separated by “/”. Any letter or digit can name a piece.</p>
+      <div class="browse-row"><button class="btn primary" id="load">Solve</button></div>
+      <div class="err" id="cubeErr"></div>
+    </section>
+  </div>
+
+  <div class="viewer">
+    <div class="stage" id="stage">
+      <canvas id="canvas"></canvas>
+      <div class="overlay-msg" id="msg" hidden><span></span></div>
+      <div class="top">
+        <div class="pill" id="nav">
+          <button id="prev" aria-label="Previous solution">‹</button>
+          <span class="count" id="solLabel">–</span>
+          <button id="next" aria-label="Next solution">›</button>
+        </div>
+        <div class="pill"><button id="resetView" style="font-size:13px">Reset view</button></div>
+      </div>
+      <div class="bottom">
+        <div class="pill explode">
+          <span>Explode</span>
+          <input type="range" id="explode" min="0" max="100" value="0">
+        </div>
+      </div>
+    </div>
+    <div class="below">
+      <div class="legend" id="legend"></div>
+      <div class="layers" id="layers"></div>
+    </div>
+    <p class="hint" style="margin:0">Drag to turn the cube, scroll or pinch to zoom. Click a piece in the legend to hide or show it.</p>
+  </div>
+</main>
+<footer>
+  Every set of three four-cube and three five-cube pieces was checked in advance:
+  <span id="totals"></span>
+  Solutions that differ only by turning the whole cube count once.
+</footer>
+<script type="module" src="app.js"></script>
+</body>
+</html>
