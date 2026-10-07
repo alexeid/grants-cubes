@@ -4,7 +4,7 @@ Fill a 3×3×3 cube with three four-cube pieces and three five-cube pieces.
 Pieces can be turned but not mirrored, and solutions that differ only by
 turning the whole cube count once.
 
-**Web page:** https://alexeid.github.io/grants-cubes/ — pick pieces, see every
+**Web page:** https://alexeidrummond.org/grants-cubes/ — pick pieces, see every
 solution in 3D, pull the cube apart, or find puzzles by number of solutions.
 
 ## Command line
