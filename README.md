@@ -23,3 +23,8 @@ Seven four-cube and 25 five-cube shapes fit in the cube. Of the 80,500 sets of
 six different pieces, 42,798 can be solved; 6,464 have exactly one solution and
 the most any set has is 395. Allowing repeated pieces, 102,386 of 245,700 sets
 can be solved, with up to 560 solutions.
+
+Every solution can be assembled. Each of the 987,832 tilings comes apart by
+sliding one piece at a time straight out along an axis, so the reverse order
+puts it together; no pieces interlock. `./cubes enumerate` checks this on
+every run.

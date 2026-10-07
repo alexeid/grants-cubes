@@ -428,6 +428,44 @@ static long *slot(uint64_t k) {
     return &hraw[h];
 }
 
+/* cells piece mask m passes through sliding straight out of the cube in direction d
+   (0..5 = -x, +x, -y, +y, -z, +z) */
+static uint32_t sweep(uint32_t m, int d) {
+    uint32_t s = 0;
+    for (int c = 0; c < 27; c++) {
+        if (!(m >> c & 1)) continue;
+        int v[3] = {c % 3, c / 3 % 3, c / 9};
+        for (;;) {
+            v[d / 2] += d & 1 ? 1 : -1;
+            if (v[d / 2] < 0 || v[d / 2] > 2) break;
+            s |= 1u << (v[0] + 3*v[1] + 9*v[2]);
+        }
+    }
+    return s;
+}
+
+/* Can the cube be taken apart by sliding one piece at a time straight out along
+   an axis? Removing a piece only frees space, so taking any removable piece first
+   never loses a way out, and greedy removal decides it. Reversed, the same order
+   assembles the cube. Failing this does not make a tiling unbuildable - a group of
+   pieces might slide together - but passing it proves the tiling buildable. */
+static int separable(const uint32_t *m, int n) {
+    int left = (1 << n) - 1, progress = 1;
+    while (left && progress) {
+        progress = 0;
+        for (int i = 0; i < n; i++) {
+            if (!(left >> i & 1)) continue;
+            uint32_t others = 0;
+            for (int j = 0; j < n; j++) if (j != i && (left >> j & 1)) others |= m[j];
+            for (int d = 0; d < 6; d++)
+                if (!(sweep(m[i], d) & others)) { left &= ~(1 << i); progress = 1; break; }
+        }
+    }
+    return !left;
+}
+
+static long nseparable;
+
 static void enum_rec(uint32_t filled, int nt, int np, int depth) {
     if (depth == 6) {
         int sh[6]; memcpy(sh, eshape, sizeof sh);
@@ -439,7 +477,7 @@ static void enum_rec(uint32_t filled, int nt, int np, int depth) {
         (*r)++;
         uint32_t m[6]; memcpy(m, emask, sizeof m);
         sort_masks(m, 6);
-        if (is_canonical(m, 6)) huniq[r - hraw]++;
+        if (is_canonical(m, 6)) { huniq[r - hraw]++; nseparable += separable(m, 6); }
         return;
     }
     int c = __builtin_ctz(~filled);
@@ -509,6 +547,8 @@ static int cmd_enumerate(const char *out) {
     int npent = nshapes - ntetra;
     printf("%ld tilings of the cube (%ld up to rotation), %d solvable piece sets\n",
            totraw, totuniq, n);
+    printf("%ld of the %ld can be taken apart one piece at a time by straight slides, "
+           "so can be assembled\n", nseparable, totuniq);
     print_hist("Sets of 6 different pieces", sets, n, 1, choose(ntetra, 3) * choose(npent, 3));
     print_hist("Sets allowing repeated pieces", sets, n, 0,
                choose(ntetra + 2, 3) * choose(npent + 2, 3));
