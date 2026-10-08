@@ -1,4 +1,4 @@
-# Cube Puzzle Finder
+# Grant's Cubes
 
 Fill a 3×3×3 cube with three four-cube pieces and three five-cube pieces.
 Pieces can be turned but not mirrored, and solutions that differ only by
